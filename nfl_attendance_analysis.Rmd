@@ -1,0 +1,593 @@
+---
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# NFL Attendance Analysis
+
+### By Evelyn Wake
+
+# Introduction
+
+## Problem Statement
+
+### Introduction
+
+Multiple times throughout a season, NFL organizations need to prepare
+for game day. An important part of that is knowing how many fans will
+attend a given game.
+
+### Plan
+
+There are several factors that could affect attendance, such as
+
+-   A team's performance
+-   The week number
+
+The plan is to evaluate the relationship between the many aspects of a
+team's performance and the fan attendance for that week, as well as the
+week number vs fan attendance. This will be done by plotting different
+variables pertaining to a team's performance and attendance for games.
+
+# Packages Required
+
+```{r}
+# ggplot2 is required for more options while plotting graphs
+library('ggplot2')
+
+# gridExtra is required for orienting the display of multiple ggplot2 plots
+library('gridExtra')
+```
+
+# Data Preparation
+
+[Source](https://github.com/rfordatascience/tidytuesday/blob/master/data/2020/2020-02-04/readme.md)
+
+## Data Explanation
+
+This data set is originally sourced from Pro Football Reference, a
+reliable source for NFL statistics. The data was collected on February
+4th, 2020
+
+This data set contains 3 tables, which are described below:
+
+### attendance.csv:
+
+This table contains 8 variables pertaining to the attendance records for
+each team on a week-by-week basis. Each row is the attendance record for
+one team during one week
+
+### standings.csv:
+
+This table contains 15 variables pertaining to the overall standings of
+the NFL on a season-by-season basis. Each row contains season statistics
+for one team during a given season
+
+### games.csv:
+
+This table contains 19 variables, each representative of a different
+statistic of a game. Each row is one singular game.
+
+## Data Importing
+
+```{r}
+attendance = read.csv('data/attendance.csv')
+games = read.csv('data/games.csv')
+standings = read.csv('data/standings.csv')
+```
+
+## Data Cleaning
+
+### Attendance
+
+```{r}
+# Convert the two columns containing the team's full name into one combined column
+attendance$team_name = paste(attendance$team, attendance$team_name)
+
+columns_of_interest = c('team_name', 'year', 'home', 'week', 'weekly_attendance')
+# Narrow the table down to columns of interest
+attendance = attendance[columns_of_interest]
+# Delete rows where weekly attendance is NA to filter out bye weeks
+attendance = attendance[!is.na(attendance$weekly_attendance), ]
+```
+
+Each of the columns selected serve a purpose in gathering valuable
+attendance information
+
+team_name: Utilized to specify which team the weekly attendance belongs
+to
+
+year: Utilized to specify which year the weekly attendance belongs to
+
+home: Utilized to track the team's home attendance for that year
+
+week: Utilized to specify which week the weekly attendance belongs to
+
+weekly_attendance: Utilized to track the team's attendance for that week
+
+### Games
+
+```{r}
+columns_of_interest = c('year', 'week', 'home_team', 'away_team', 'winner')
+games = games[columns_of_interest]
+#Only select regular season games, no playoffs
+games = games[games$week %in% 1:17, ]
+```
+
+Each of the columns selected serve a purpose in gathering valuable game
+information
+
+year: Utilized to specify which year the game occurred in
+
+week: Utilized to specify which week game occurred in
+
+home_team: Utilized to specify the home team of that game
+
+away_team: Utilized to specify the away team of that game
+
+time: Utilized to specify the time that the game occurred at
+
+winner: Utilized to specify which team won the game
+
+### Standings
+
+```{r}
+
+standings$team_name = paste(standings$team, standings$team_name)
+columns_of_interest = c('team_name', 'year', 'wins', 'simple_rating', 'strength_of_schedule', 'margin_of_victory', 'playoffs', 'sb_winner')
+standings = standings[columns_of_interest]
+#Convert 'playoffs' column to be numeric
+standings$playoffs = factor(x=standings$playoffs, levels=c("Playoffs", "No Playoffs"))
+levels(standings$playoffs) = c(1, 0)
+#Convert 'sb_winner' column to be numeric
+standings$sb_winner = factor(x=standings$sb_winner, levels=c("Won Superbowl", "No Superbowl"))
+levels(standings$sb_winner) = c(1, 0)
+```
+
+Each of the columns selected serve a purpose in gathering valuable game
+information
+
+team_name: Utilized to specify the team that the standing belongs to
+
+year: Utilized to specify which year the game occurred in
+
+wins: Utilized to specify how many wins the team earned this season
+
+simple_rating: Utilized to specify a team's relative performance
+
+strength_of_schedule: Utilized to specify the strength of a team's
+opponents
+
+margin_of_victory: Utilized to specify how close the team's games were,
+on average
+
+playoffs: Utilized to specify if the team made the playoffs that year
+
+sb_winner: Utilized to specify if the team won the superbowl that year
+
+## Final Data Set
+
+```{r}
+head(attendance)
+```
+
+```{r}
+head(games)
+```
+
+```{r}
+head(standings)
+```
+
+# Exploratory Data Analysis
+
+## Season Data vs Attendance
+
+```{r}
+# Select attendance records past 2000 so that they may be compared to the previous year
+# Only select week 1, as that is the first game after the postseason
+week_1_past_2000 = attendance[attendance$year > 2000 & attendance$week == 1, ]
+# initiate vectors for season performance
+simple_rating_vector = rep(0, nrow(week_1_past_2000))
+strength_of_schedule_vector = rep(0, nrow(week_1_past_2000))
+margin_of_victory_vector = rep(0, nrow(week_1_past_2000))
+# Initiate vectors for postseason performance
+won_sb_vector = rep(0, nrow(week_1_past_2000))
+playoff_vector = rep(0, nrow(week_1_past_2000))
+# Initiate vector to track the difference in attendance for current week 1 vs previous week 1
+attendance_diff_vector = rep(0, nrow(week_1_past_2000))
+# Iterate through each team's week in the dataframe
+for(idx in 1:nrow(week_1_past_2000)){
+  # Collect basic identifying information
+  team_name = week_1_past_2000[idx,]$team_name
+  winner = week_1_past_2000[idx,]$winner
+  year = week_1_past_2000[idx,]$year
+  # Get the team's strength of schedule for the current year
+  strength_of_schedule = standings$strength_of_schedule[standings$year == year & standings$team_name == team_name]
+  # Get the team's season performance for the previous year
+  simple_rating = standings$simple_rating[standings$year == (year - 1) & standings$team_name == team_name]
+  margin_of_victory = standings$margin_of_victory[standings$year == (year - 1) & standings$team_name == team_name]
+  # Get the team's postseason performance for the previous year
+  sb_result = standings$sb_winner[standings$year == (year - 1) & standings$team_name == team_name]
+  playoff_result = standings$playoffs[standings$year == (year - 1) & standings$team_name == team_name]
+  current_attendance = week_1_past_2000$weekly_attendance[week_1_past_2000$team_name == team_name & week_1_past_2000$year == year]
+  # Calculate information on difference in attendance 
+  last_year_attendance = attendance$weekly_attendance[attendance$team_name == team_name & attendance$year == (year - 1) & attendance$week == 1]
+  attendance_diff_result = current_attendance - last_year_attendance
+  # If team didn't exist the previous year, set all values to 0
+  if(length(attendance_diff_result) == 0){
+    simple_rating = 0
+    margin_of_victory = 0
+    sb_result = 0
+    playoff_result = 0
+    attendance_diff_result = 0
+  }
+  # Record the information in the vectors
+  strength_of_schedule_vector[idx] = as.numeric(as.character(strength_of_schedule))
+  simple_rating_vector[idx] = as.numeric(as.character(simple_rating))
+  margin_of_victory_vector[idx] = as.numeric(as.character(margin_of_victory))
+  won_sb_vector[idx] = as.numeric(as.character(sb_result))
+  playoff_vector[idx] = as.numeric(as.character(playoff_result))
+  attendance_diff_vector[idx] = attendance_diff_result
+}
+# Convert the vectors into a data frame and appropriately name the columns
+season_df <- data.frame(strength_of_schedule_vector, simple_rating_vector, margin_of_victory_vector, won_sb_vector, playoff_vector, attendance_diff_vector)
+
+names(season_df) = c("strength_of_schedule", "simple_rating", "margin_of_victory", "won_previous_sb", "made_previous_playoffs", "week_1_attendance_diff")
+season_df$made_previous_playoffs = factor(x=season_df$made_previous_playoffs)
+season_df$won_previous_sb = factor(x=season_df$won_previous_sb)
+```
+
+## Week-To-Week Performance
+
+```{r}
+# Function to parse a vector into a data frame for a team's performance during a week
+parse_into_dataframe = function(v){
+  df = as.data.frame(as.list(v))
+  names(df) = c("year", "week", "home", "team_name", "won_game", "wins", "weeks_since_win")
+  for(name in c("year", "week", "home", "won_game", "wins", "weeks_since_win")){
+    df[name] = as.integer(df[name])
+  }
+  return(df)
+}
+# Initialize a data frame to collect data on a team's weekly performance
+weekly_records = data.frame()
+# Iterate through every game on record
+for (idx in 1:nrow(games)){
+  # Extract information on that week's game
+  home_team = games[idx,]$home_team
+  away_team = games[idx,]$away_team
+  winner = games[idx,]$winner
+  year = games[idx,]$year
+  week = games[idx,]$week
+  # Gather the pre-existing weekly records of both teams in the game
+  home_records = weekly_records[weekly_records$team_name == home_team & weekly_records$year == year, ]
+  away_records = weekly_records[weekly_records$team_name == away_team & weekly_records$year == year, ]
+  # Initialize data based on if the team has played yet this year or not
+  
+  # Initialize number of wins for the home team
+  if(length(home_records$team_name) == 0){
+    home_win_count = 0
+  }
+  else{
+    home_win_count = tail(home_records, n=1)$wins
+  }
+  # Initialize number of weeks since win for the home team
+  if(length(home_records$team_name) == 0){
+    home_weeks_since_win = 0
+  }
+  else{
+    last_won_game = tail(home_records[home_records$won_game == 1, ], n = 1)$week
+    if(length(last_won_game) == 0){
+      home_weeks_since_win = as.integer(week)
+    }
+    else{
+      home_weeks_since_win = as.integer(week) - last_won_game
+    }
+  }
+  
+  # Initialize number of wins for the away team
+  if(length(away_records$team_name) == 0){
+    away_win_count = 0
+  }
+  else{
+    away_win_count = tail(away_records, n=1)$wins
+  }
+  # Initialize number of weeks since win for the away team
+  if(length(away_records$team_name) == 0){
+    away_weeks_since_win = 0
+  }
+  else{
+    last_won_game = tail(away_records[away_records$won_game == 1, ], n = 1)$week
+    if(length(last_won_game) == 0){
+      away_weeks_since_win = as.integer(week)
+    }
+    else{
+      away_weeks_since_win = as.integer(week) - last_won_game
+    }
+  }
+  # Increment the win count of the winning team and specify each team's result
+  if(winner == home_team){
+    home_win_count = home_win_count + 1
+    home_won = 1
+    away_won = 0
+  }
+  else{
+    away_win_count = away_win_count + 1
+    home_won = 0
+    away_won = 1
+  }
+  # Create the vector representation of each team's performance
+  home_result = c(year, week, 1, home_team, home_won, home_win_count, home_weeks_since_win)
+  away_result = c(year, week, 0, away_team, away_won, away_win_count, away_weeks_since_win)
+  # Update the weekly records data frame
+  if(nrow(weekly_records) == 0){
+    weekly_records = parse_into_dataframe(home_result)
+  }
+  else{
+    weekly_records = rbind(weekly_records, parse_into_dataframe(home_result))
+  }
+  weekly_records = rbind(weekly_records, parse_into_dataframe(away_result))
+}
+```
+
+## Home Attendance Records
+
+```{r}
+# Narrow the data frame down to only the home teams for each week
+home_records = weekly_records[weekly_records$home == 1, ] 
+# Sort the home records data frame to match the attendance data frame format
+home_records = home_records[order(home_records$team_name, home_records$year, home_records$week),]
+#Initialize a vector for all of the attendance records corresponding to each home team 
+attendance_recs = rep(0, nrow(home_records))
+# Iterate through all of the home teams
+for (idx in 1:nrow(home_records)){
+  # Extract information on the home team, year, and week
+  week = home_records[idx,]$week
+  year = home_records[idx,]$year
+  team = home_records[idx,]$team_name
+  # Get the attendance data for that team during that week
+  attendance_num = attendance$weekly_attendance[attendance$week == week & attendance$year == year & attendance$team_name == team]
+  # Record the attendance data for that team during that week
+  attendance_recs[idx] = attendance_num
+  
+}
+
+# Add the attendance data to the data frame
+home_records$attendance = attendance_recs
+
+#Initialize a vector for all of the attendance records corresponding to each home team when differenced with that team's average home attendance for the year
+attendance_diffs_recs = rep(0, nrow(home_records))
+for (idx in 1:nrow(home_records)){
+  # Extract information on the home team, year, and week
+  week = home_records[idx,]$week
+  year = home_records[idx,]$year
+  team = home_records[idx,]$team_name
+  # Get the attendance data for that team during that week
+  attendance_num = home_records$attendance[home_records$week == week & home_records$year == year & home_records$team_name == team]
+  year_attendance = home_records$attendance[home_records$year == year & home_records$team_name == team]
+  average_attendance = mean(year_attendance)
+  # Record the attendance difference data for that team during that week
+  attendance_diffs_recs[idx] = attendance_num - average_attendance
+  
+}
+
+# Add the attendance difference data to the data frame
+home_records$attendance_diff = attendance_diffs_recs
+```
+
+# Plots & Analysis
+
+## Number Of Wins
+
+```{r}
+# Plot data comparing number of wins and attendance data
+dev.new(width=9, height=4.5)
+layout_mtx = matrix(c(1, 2), 1, 2)
+lay.mat = layout_mtx
+layout(mat=lay.mat)   
+plot(home_records$wins, home_records$attendance / 1000, xlab="Number of Wins", ylab = "Game Attendance (Thousands)", main = "Wins vs Attendance")
+box(which="figure", col='gray')  
+plot(home_records$wins, home_records$attendance_diff, xlab = "Number of Wins", ylab = "Game Attendance - Season Average Attendance", main = "Wins vs Attendance Difference")
+box(which="figure", col='gray')  
+```
+
+### Analysis
+
+As shown in the two scatter plots above, there does not appear to be
+much correlation between a team's number of wins and their overall
+attendance for that season. Although there is a lot of variance within
+the data, that is likely explained by other factors such as location.
+The variance appears to lessen as the number of wins increases, but this
+is to be expected as it is rarer for a team to get a higher number of
+wins.
+
+## Weeks Since Win
+
+```{r}
+# Plot data comparing weeks since win and attendance data
+dev.new(width=12, height=4.5)
+layout_mtx = matrix(c(1, 2), 1, 2)
+lay.mat = layout_mtx
+layout(mat=lay.mat)   
+plot(home_records$weeks_since_win, home_records$attendance / 1000, xlab="Weeks Since Win", ylab = "Game Attendance (Thousands)", main = "Weeks Since Win vs Attendance")
+box(which="figure", col='gray')  
+plot(home_records$weeks_since_win, home_records$attendance_diff, xlab = "Weeks Since Win", ylab = "Game Attendance - Season Average Attendance", main = "Weeks Since Win vs\n Attendance Difference")
+box(which="figure", col='gray')  
+```
+
+### Analysis
+
+Similarly to the previous scatter plots, there is not much correlation
+between attendance records and the number of weeks since a win. This is
+unsurprising as it supports the factor that within a season, the overall
+number of wins does not affect attendance in a major way.
+
+## Week Number
+
+```{r}
+# Plot data comparing week number and attendance data
+dev.new(width=9, height=4.5)
+layout_mtx = matrix(c(1, 2), 1, 2)
+lay.mat = layout_mtx
+layout(mat=lay.mat)    
+gg1 = ggplot(home_records, aes(x=week, y=attendance / 1000)) + 
+  geom_bar(stat = "identity") + xlab("Week Number") +
+  ylab("Attendance (Thousands)") + ggtitle("Week Number vs Attendance (Thousands)")
+gg2 = ggplot(home_records, aes(x = week, y = attendance_diff)) +
+    geom_point() + xlab("Week Number") +
+  ylab("Avg Attendance - Season Avg")  + ggtitle("Week Number vs Attendance Difference")
+grid.arrange(gg1, gg2)
+```
+
+### Analysis
+
+As shown by the bar plot, the overall weekly attendance dips down during
+the middle of the season, and then rises back up by week 12. This is
+likely explained by the fact that the middle of the season is the least
+exciting compared to the beginning and the end of the season. In the
+beginning, fans are excited for the return of football, and are more
+likely to go to games. Towards the end of the season, competition rises
+as teams begin fighting harder for playoff spots, and games are likely
+to become more interesting.
+
+However, when looking at the scatter plot comparing week number and
+attendance difference, something interesting appears.There are more
+games that are below a team's average attendance for that season. This
+could possibly be explained by the fact that towards the end of the
+season, a team's postseason fate becomes more clear. Specifically around
+week 13, the amount of games with relatively low attendance increases.
+By that time, a team could potentially be 2-10, with it being extremely
+unlikely that they will attend the playoffs. On the other hand, a team
+could be 12-0, and they will almost certainly make the playoffs that
+year. With the postseason implications of those scenarios being
+relatively low, teams might not try as hard to win, and even bench some
+of their star players as to not risk injury. With that being said, those
+games might not be as interesting to fans, and they might be less likely
+to attend.
+
+## Season Data
+
+```{r}
+# Plot data comparing if the team made the previous playoffs and attendance data
+ggplot(season_df, aes(x=made_previous_playoffs, y=week_1_attendance_diff)) + 
+    geom_boxplot() + xlab("Made Previous Playoffs") + ylab("Week 1 Attendance - Previous Week 1 Attendance") + scale_x_discrete(labels = c("No", "Yes"))  + ggtitle("Previously Made Playoffs and Week 1 Attendance Difference")
+
+```
+
+### Analysis
+
+Although the median week 1 difference in attendance between teams who
+have made the playoffs the previous season and those who hadn't are
+nearly identical, there exists an interesting difference between the two
+boxplots. Both the 25th and 75th percentile for attendance for teams who
+had previously made playoffs are higher.
+
+Although not influential on the analysis itself, it is interesting to
+see a -50000 difference between one team's week 1 attendance.
+
+```{r}
+# Plot data comparing if the team won the previous superbowl and attendance data
+ggplot(season_df, aes(x=won_previous_sb, y=week_1_attendance_diff)) + 
+    geom_boxplot(alpha=0.5) + xlab("Won Previous Superbowl") + ylab("Week 1 Attendance - Previous Week 1 Attendance") + scale_x_discrete(labels = c("No", "Yes")) + ggtitle("Previous Superbowl Result and Week 1 Attendance Difference")
+
+
+```
+
+### Analysis
+
+The median week 1 difference in attendance between teams who have won
+the Superbowl the previous season and those who hadn't are quite close.
+The plot for teams that have previously won the Superbowl appears to be
+a condensed version of the teams that hadn't, which makes sense given
+the relatively small sample size of teams that have won the Superbowl.
+
+```{r}
+# Plot data comparing regular season information and week 1 attendance difference
+dev.new(width=13.5, height=4.5)
+layout_mtx = matrix(c(1, 2, 3), 1, 3)
+lay.mat = layout_mtx
+layout(mat=lay.mat)   
+plot(season_df$strength_of_schedule, season_df$week_1_attendance_diff, xlab = "Strength of Schedule", ylab = "Week 1 Attendance - Previous Week 1 Attendance", main = "Strength of Schedule\n vs Week 1 Attendance Diff")
+box(which="figure", col='gray')  
+plot(season_df$simple_rating, season_df$week_1_attendance_diff, xlab = "Previous Season's Simple Rating", ylab = "Week 1 Attendance - Previous Week 1 Attendance", main = "Previous Season's Simple Rating\n vs Week 1 Attendance Diff")
+box(which="figure", col='gray')  
+plot(season_df$margin_of_victory, season_df$week_1_attendance_diff, xlab = "Previous Season's Margin of Victory", ylab = "Week 1 Attendance - Previous Week 1 Attendance", main = "Previous Season's Margin of\n Victory vs Week 1 Attendance\n Diff")
+box(which="figure", col='gray')  
+```
+
+### Analysis
+
+Interestingly, it appears that a team's performance the previous season,
+as well as the strength of their schedule does not have much impact on
+their week 1 attendance when compared to the previous year.
+
+# Summary
+
+## Problem Statement
+
+To reiterate the problem statement:
+
+"Multiple times throughout a season, NFL organizations need to prepare
+for game day. An important part of that is knowing how many fans will
+attend a given game."
+
+## Addressing the Problem Statement
+
+To address the problem statement, I utilized the NFL attendance data set
+to extract multiple features of a team's performance, and compared it to
+attendance data for both weeks and seasons. I also compared attendance
+data to itself, and utilized that difference to illustrate any impact a
+team's performance might have on the difference.
+
+Additionally, I compared attendance data to week numbers to see how
+attendance data changes throughout a season
+
+## Summarizing Insights
+
+Oddly enough, it did not appear that there was much correlation between
+a team's performance in-season and their attendance for that season.
+However, if a team had made the playoffs during the previous season, the
+week 1 attendance for the next season is likely to be higher than the
+week 1 attendance of the previous season
+
+One factor that did appear to impact a team's attendance is week number.
+It was found that towards the middle of the season, attendance appears
+to dip down, but rise back up around week 12.
+
+## Consumer Implications
+
+When preparing for a game, teams should largely pay attention to what
+week in the season it is, and compare that to previous weeks in the
+season. If it is week 1, the team should pay attention to how many fans
+attended the week 1 game last season.
+
+They should also factor in if the teams made the playoffs the previous
+year.
+
+Factoring in the aforementioned details could provide an idea of how to
+adequately prepare for upcoming games when considering attendance.
+
+## Limitations
+
+One of the major limitations of this analysis was that I was only
+working in 2 dimensions at a time. It is possible that two or more
+factors, when combined, uncover a correlation that wouldn't be found by
+either alone
+
+Another major limitations lies within the data. It is important to
+consider the weather occurring during a game. Fans are more likely to
+attend a game on a sunny day compared to a game when it is snowing or
+raining.
+
+Alongside this, location could be incredibly important to consider. For
+example, it is more likely to snow during a home game for a team that is
+further north than a team that is further south. Nearby population
+density could also play a huge role in this.
+
+Finally, it would be important to consider each stadium's capacity. Some
+teams might have lower attendance because their stadium simply cannot
+hold as many fans. I attempted to account for this by utilizing average
+attendance, but I believe it would be better to utilize the capacity
+percentage instead of number of attending fans
