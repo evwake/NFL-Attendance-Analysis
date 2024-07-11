@@ -1,12 +1,3 @@
----
-output: github_document
----
-
----
-editor_options: 
-  markdown: 
-    wrap: 72
----
 
 # NFL Attendance Analysis
 
@@ -24,23 +15,29 @@ attend a given game.
 
 There are several factors that could affect attendance, such as
 
--   A team's performance
--   The week number
+- A team’s performance
+- The week number
 
 The plan is to evaluate the relationship between the many aspects of a
-team's performance and the fan attendance for that week, as well as the
+team’s performance and the fan attendance for that week, as well as the
 week number vs fan attendance. This will be done by plotting different
-variables pertaining to a team's performance and attendance for games.
+variables pertaining to a team’s performance and attendance for games.
 
 # Packages Required
 
-```{r}
+``` r
 # ggplot2 is required for more options while plotting graphs
 library('ggplot2')
+```
 
+    ## Warning: package 'ggplot2' was built under R version 4.3.3
+
+``` r
 # gridExtra is required for orienting the display of multiple ggplot2 plots
 library('gridExtra')
 ```
+
+    ## Warning: package 'gridExtra' was built under R version 4.3.3
 
 # Data Preparation
 
@@ -73,7 +70,7 @@ statistic of a game. Each row is one singular game.
 
 ## Data Importing
 
-```{r}
+``` r
 attendance = read.csv('data/attendance.csv')
 games = read.csv('data/games.csv')
 standings = read.csv('data/standings.csv')
@@ -83,7 +80,7 @@ standings = read.csv('data/standings.csv')
 
 ### Attendance
 
-```{r}
+``` r
 # Convert the two columns containing the team's full name into one combined column
 attendance$team_name = paste(attendance$team, attendance$team_name)
 
@@ -102,15 +99,15 @@ to
 
 year: Utilized to specify which year the weekly attendance belongs to
 
-home: Utilized to track the team's home attendance for that year
+home: Utilized to track the team’s home attendance for that year
 
 week: Utilized to specify which week the weekly attendance belongs to
 
-weekly_attendance: Utilized to track the team's attendance for that week
+weekly_attendance: Utilized to track the team’s attendance for that week
 
 ### Games
 
-```{r}
+``` r
 columns_of_interest = c('year', 'week', 'home_team', 'away_team', 'winner')
 games = games[columns_of_interest]
 #Only select regular season games, no playoffs
@@ -134,8 +131,7 @@ winner: Utilized to specify which team won the game
 
 ### Standings
 
-```{r}
-
+``` r
 standings$team_name = paste(standings$team, standings$team_name)
 columns_of_interest = c('team_name', 'year', 'wins', 'simple_rating', 'strength_of_schedule', 'margin_of_victory', 'playoffs', 'sb_winner')
 standings = standings[columns_of_interest]
@@ -156,12 +152,12 @@ year: Utilized to specify which year the game occurred in
 
 wins: Utilized to specify how many wins the team earned this season
 
-simple_rating: Utilized to specify a team's relative performance
+simple_rating: Utilized to specify a team’s relative performance
 
-strength_of_schedule: Utilized to specify the strength of a team's
+strength_of_schedule: Utilized to specify the strength of a team’s
 opponents
 
-margin_of_victory: Utilized to specify how close the team's games were,
+margin_of_victory: Utilized to specify how close the team’s games were,
 on average
 
 playoffs: Utilized to specify if the team made the playoffs that year
@@ -170,23 +166,54 @@ sb_winner: Utilized to specify if the team won the superbowl that year
 
 ## Final Data Set
 
-```{r}
+``` r
 head(attendance)
 ```
 
-```{r}
+    ##           team_name year   home week weekly_attendance
+    ## 1 Arizona Cardinals 2000 387475    1             77434
+    ## 2 Arizona Cardinals 2000 387475    2             66009
+    ## 4 Arizona Cardinals 2000 387475    4             71801
+    ## 5 Arizona Cardinals 2000 387475    5             66985
+    ## 6 Arizona Cardinals 2000 387475    6             44296
+    ## 7 Arizona Cardinals 2000 387475    7             38293
+
+``` r
 head(games)
 ```
 
-```{r}
+    ##   year week           home_team            away_team               winner
+    ## 1 2000    1   Minnesota Vikings        Chicago Bears    Minnesota Vikings
+    ## 2 2000    1  Kansas City Chiefs   Indianapolis Colts   Indianapolis Colts
+    ## 3 2000    1 Washington Redskins    Carolina Panthers  Washington Redskins
+    ## 4 2000    1     Atlanta Falcons  San Francisco 49ers      Atlanta Falcons
+    ## 5 2000    1 Pittsburgh Steelers     Baltimore Ravens     Baltimore Ravens
+    ## 6 2000    1    Cleveland Browns Jacksonville Jaguars Jacksonville Jaguars
+
+``` r
 head(standings)
 ```
+
+    ##              team_name year wins simple_rating strength_of_schedule
+    ## 1       Miami Dolphins 2000   11           7.1                  1.0
+    ## 2   Indianapolis Colts 2000   10           7.9                  1.5
+    ## 3        New York Jets 2000    9           3.5                  3.5
+    ## 4        Buffalo Bills 2000    8           0.0                  2.2
+    ## 5 New England Patriots 2000    5          -2.5                  1.4
+    ## 6     Tennessee Titans 2000   13           8.3                 -1.3
+    ##   margin_of_victory playoffs sb_winner
+    ## 1               6.1        1         0
+    ## 2               6.4        1         0
+    ## 3               0.0        0         0
+    ## 4              -2.2        0         0
+    ## 5              -3.9        0         0
+    ## 6               9.7        1         0
 
 # Exploratory Data Analysis
 
 ## Season Data vs Attendance
 
-```{r}
+``` r
 # Select attendance records past 2000 so that they may be compared to the previous year
 # Only select week 1, as that is the first game after the postseason
 week_1_past_2000 = attendance[attendance$year > 2000 & attendance$week == 1, ]
@@ -243,7 +270,7 @@ season_df$won_previous_sb = factor(x=season_df$won_previous_sb)
 
 ## Week-To-Week Performance
 
-```{r}
+``` r
 # Function to parse a vector into a data frame for a team's performance during a week
 parse_into_dataframe = function(v){
   df = as.data.frame(as.list(v))
@@ -336,7 +363,7 @@ for (idx in 1:nrow(games)){
 
 ## Home Attendance Records
 
-```{r}
+``` r
 # Narrow the data frame down to only the home teams for each week
 home_records = weekly_records[weekly_records$home == 1, ] 
 # Sort the home records data frame to match the attendance data frame format
@@ -383,7 +410,7 @@ home_records$attendance_diff = attendance_diffs_recs
 
 ## Number Of Wins
 
-```{r}
+``` r
 # Plot data comparing number of wins and attendance data
 dev.new(width=9, height=4.5)
 layout_mtx = matrix(c(1, 2), 1, 2)
@@ -398,7 +425,7 @@ box(which="figure", col='gray')
 ### Analysis
 
 As shown in the two scatter plots above, there does not appear to be
-much correlation between a team's number of wins and their overall
+much correlation between a team’s number of wins and their overall
 attendance for that season. Although there is a lot of variance within
 the data, that is likely explained by other factors such as location.
 The variance appears to lessen as the number of wins increases, but this
@@ -407,7 +434,7 @@ wins.
 
 ## Weeks Since Win
 
-```{r}
+``` r
 # Plot data comparing weeks since win and attendance data
 dev.new(width=12, height=4.5)
 layout_mtx = matrix(c(1, 2), 1, 2)
@@ -428,7 +455,7 @@ number of wins does not affect attendance in a major way.
 
 ## Week Number
 
-```{r}
+``` r
 # Plot data comparing week number and attendance data
 dev.new(width=9, height=4.5)
 layout_mtx = matrix(c(1, 2), 1, 2)
@@ -456,9 +483,9 @@ to become more interesting.
 
 However, when looking at the scatter plot comparing week number and
 attendance difference, something interesting appears.There are more
-games that are below a team's average attendance for that season. This
+games that are below a team’s average attendance for that season. This
 could possibly be explained by the fact that towards the end of the
-season, a team's postseason fate becomes more clear. Specifically around
+season, a team’s postseason fate becomes more clear. Specifically around
 week 13, the amount of games with relatively low attendance increases.
 By that time, a team could potentially be 2-10, with it being extremely
 unlikely that they will attend the playoffs. On the other hand, a team
@@ -471,41 +498,42 @@ to attend.
 
 ## Season Data
 
-```{r}
+``` r
 # Plot data comparing if the team made the previous playoffs and attendance data
 ggplot(season_df, aes(x=made_previous_playoffs, y=week_1_attendance_diff)) + 
     geom_boxplot() + xlab("Made Previous Playoffs") + ylab("Week 1 Attendance - Previous Week 1 Attendance") + scale_x_discrete(labels = c("No", "Yes"))  + ggtitle("Previously Made Playoffs and Week 1 Attendance Difference")
-
 ```
+
+![](nfl_attendance_analysis_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
 
 ### Analysis
 
 Although the median week 1 difference in attendance between teams who
-have made the playoffs the previous season and those who hadn't are
+have made the playoffs the previous season and those who hadn’t are
 nearly identical, there exists an interesting difference between the two
 boxplots. Both the 25th and 75th percentile for attendance for teams who
 had previously made playoffs are higher.
 
 Although not influential on the analysis itself, it is interesting to
-see a -50000 difference between one team's week 1 attendance.
+see a -50000 difference between one team’s week 1 attendance.
 
-```{r}
+``` r
 # Plot data comparing if the team won the previous superbowl and attendance data
 ggplot(season_df, aes(x=won_previous_sb, y=week_1_attendance_diff)) + 
     geom_boxplot(alpha=0.5) + xlab("Won Previous Superbowl") + ylab("Week 1 Attendance - Previous Week 1 Attendance") + scale_x_discrete(labels = c("No", "Yes")) + ggtitle("Previous Superbowl Result and Week 1 Attendance Difference")
-
-
 ```
+
+![](nfl_attendance_analysis_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
 
 ### Analysis
 
 The median week 1 difference in attendance between teams who have won
-the Superbowl the previous season and those who hadn't are quite close.
+the Superbowl the previous season and those who hadn’t are quite close.
 The plot for teams that have previously won the Superbowl appears to be
-a condensed version of the teams that hadn't, which makes sense given
+a condensed version of the teams that hadn’t, which makes sense given
 the relatively small sample size of teams that have won the Superbowl.
 
-```{r}
+``` r
 # Plot data comparing regular season information and week 1 attendance difference
 dev.new(width=13.5, height=4.5)
 layout_mtx = matrix(c(1, 2, 3), 1, 3)
@@ -521,7 +549,7 @@ box(which="figure", col='gray')
 
 ### Analysis
 
-Interestingly, it appears that a team's performance the previous season,
+Interestingly, it appears that a team’s performance the previous season,
 as well as the strength of their schedule does not have much impact on
 their week 1 attendance when compared to the previous year.
 
@@ -531,17 +559,17 @@ their week 1 attendance when compared to the previous year.
 
 To reiterate the problem statement:
 
-"Multiple times throughout a season, NFL organizations need to prepare
+“Multiple times throughout a season, NFL organizations need to prepare
 for game day. An important part of that is knowing how many fans will
-attend a given game."
+attend a given game.”
 
 ## Addressing the Problem Statement
 
 To address the problem statement, I utilized the NFL attendance data set
-to extract multiple features of a team's performance, and compared it to
+to extract multiple features of a team’s performance, and compared it to
 attendance data for both weeks and seasons. I also compared attendance
 data to itself, and utilized that difference to illustrate any impact a
-team's performance might have on the difference.
+team’s performance might have on the difference.
 
 Additionally, I compared attendance data to week numbers to see how
 attendance data changes throughout a season
@@ -549,12 +577,12 @@ attendance data changes throughout a season
 ## Summarizing Insights
 
 Oddly enough, it did not appear that there was much correlation between
-a team's performance in-season and their attendance for that season.
+a team’s performance in-season and their attendance for that season.
 However, if a team had made the playoffs during the previous season, the
 week 1 attendance for the next season is likely to be higher than the
 week 1 attendance of the previous season
 
-One factor that did appear to impact a team's attendance is week number.
+One factor that did appear to impact a team’s attendance is week number.
 It was found that towards the middle of the season, attendance appears
 to dip down, but rise back up around week 12.
 
@@ -575,7 +603,7 @@ adequately prepare for upcoming games when considering attendance.
 
 One of the major limitations of this analysis was that I was only
 working in 2 dimensions at a time. It is possible that two or more
-factors, when combined, uncover a correlation that wouldn't be found by
+factors, when combined, uncover a correlation that wouldn’t be found by
 either alone
 
 Another major limitations lies within the data. It is important to
@@ -588,7 +616,7 @@ example, it is more likely to snow during a home game for a team that is
 further north than a team that is further south. Nearby population
 density could also play a huge role in this.
 
-Finally, it would be important to consider each stadium's capacity. Some
+Finally, it would be important to consider each stadium’s capacity. Some
 teams might have lower attendance because their stadium simply cannot
 hold as many fans. I attempted to account for this by utilizing average
 attendance, but I believe it would be better to utilize the capacity
